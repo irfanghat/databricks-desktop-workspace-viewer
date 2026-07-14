@@ -16,7 +16,7 @@ This makes things messy, you lose your focus, plus the constant switching just e
 * **Works across platforms.** Get the same smooth, simplified experience on Windows, macOS (*TBD...*), and Linux.
 * **Made for professionals.** A great fit for data engineers, data scientists, analytics teams, consultants, and platform administrators who work across many Databricks environments all the time.
 
-## Simplifer day to day workflows
+## Simpler day to day workflows
 
 Whether you are running development, staging, and production environments, or collaborating with multiple customers, and different business units, the **Workspace Viewer** keeps each workspace handy. It keeps everything within **easy reach**, without turning your browser into a tab maze.
 
