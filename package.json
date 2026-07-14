@@ -1,0 +1,19 @@
+{
+  "name": "databricks_desktop",
+  "version": "1.0.0",
+  "description": "View & interact with Databricks Workspaces as a desktop application on Windows, Linux & Mac.",
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": ""
+  },
+  "devDependencies": {
+    "electron": "^43.1.0"
+  },
+  "dependencies": {
+    "electron-store": "^8.2.0"
+  }
+}

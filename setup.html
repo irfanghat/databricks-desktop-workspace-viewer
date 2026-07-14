@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Databricks Workspace Selector</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            background: #f5f5f7;
+            color: #1b1b1f;
+        }
+
+        /*  Sidebar  */
+        .sidebar {
+            width: 220px;
+            flex-shrink: 0;
+            background: #ebebeb;
+            color: #1b1b1f;
+            display: flex;
+            flex-direction: column;
+            padding: 16px 12px;
+            border-right: 1px solid #e4e4e4;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 8px 20px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #1b1b1f;
+            border-bottom: 1px solid #e4e4e4;
+            margin-bottom: 1rem;
+        }
+
+        .brand svg {
+            flex-shrink: 0;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 10px;
+            border-radius: 6px;
+            font-size: 0.88rem;
+            font-weight: 500;
+            cursor: pointer;
+            margin-bottom: 2px;
+            color: #44464b;
+        }
+
+        .nav-item.active {
+            background: #e6ecf1;
+            color: #254f80;
+            font-weight: 600;
+        }
+
+        .nav-item:not(.active):hover {
+            background: #eeeeee;
+            color: #1b1b1f;
+        }
+
+        .sidebar-bottom {
+            margin-top: auto;
+            border-top: 1px solid #e4e4e4;
+            padding-top: 12px;
+        }
+
+        /*  Main  */
+        .main {
+            flex: 1;
+            padding: 40px 48px;
+            overflow-y: auto;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 24px;
+        }
+
+        .page-header h1 {
+            font-size: 1.7rem;
+            font-weight: 800;
+        }
+
+        .page-header p {
+            color: #666;
+            margin-top: 6px;
+            font-size: 0.95rem;
+        }
+
+        .header-illustration {
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 14px 0 rgba(0, 0, 0, 0.01);
+            padding: 20px;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .search-wrap {
+            flex: 1;
+            position: relative;
+        }
+
+        .search-wrap svg {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+        }
+
+        #search-input {
+            width: 100%;
+            padding: 10px 12px 10px 36px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            background: #fafafa;
+        }
+
+        .btn-primary {
+            background: #16171d;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0 18px;
+            font-weight: 700;
+            font-size: 0.88rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .btn-primary:hover {
+            background: #2b2c34;
+        }
+
+        .workspace-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .workspace-item:last-child {
+            border-bottom: none;
+        }
+
+        .ws-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 1px solid #e3e3e3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: #555;
+        }
+
+        .workspace-info {
+            flex-grow: 1;
+            cursor: pointer;
+        }
+
+        .ws-name {
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        .ws-url {
+            font-size: 0.8rem;
+            color: #777;
+            margin-top: 2px;
+        }
+
+        .connect-btn {
+            background: #16171d;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 9px 18px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .connect-btn:hover {
+            background: #2b2c34;
+        }
+
+        .menu-wrap {
+            position: relative;
+        }
+
+        .menu-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            color: #888;
+            cursor: pointer;
+            padding: 6px 8px;
+            border-radius: 6px;
+        }
+
+        .menu-btn:hover {
+            background: #f0f0f0;
+        }
+
+        .dropdown {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 32px;
+            background: white;
+            border: 1px solid #e1e1e1;
+            border-radius: 8px;
+            box-shadow: 0 6px 18px 0 rgba(0, 0, 0, 0.01);
+            overflow: hidden;
+            z-index: 5;
+            min-width: 110px;
+        }
+
+        .dropdown.open {
+            display: block;
+        }
+
+        .dropdown button {
+            width: 100%;
+            text-align: left;
+            padding: 9px 14px;
+            background: none;
+            border: none;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .dropdown button:hover {
+            background: #f5f5f7;
+        }
+
+        .dropdown button.delete-opt {
+            color: #d33;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 30px 10px;
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .footer-note {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid #eee;
+            font-size: 0.8rem;
+            color: #777;
+        }
+
+        .footer-note a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+
+        /*  Form modal  */
+        .overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.35);
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+        }
+
+        .overlay.open {
+            display: flex;
+        }
+
+        .form-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            width: 380px;
+            box-shadow: 0 10px 30px 0 rgba(0, 0, 0, 0.01);
+        }
+
+        .form-card h2 {
+            font-size: 1.1rem;
+            margin-bottom: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 14px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-size: 0.82rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #555;
+        }
+
+        input[type="text"],
+        input[type="url"] {
+            padding: 9px 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .btn-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 6px;
+        }
+
+        button[type="submit"] {
+            background: #ff4040;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            flex-grow: 1;
+            font-size: 0.9rem;
+        }
+
+        button[type="submit"]:hover {
+            background: #e03030;
+        }
+
+        .cancel-btn {
+            background: #eee;
+            color: #333;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .cancel-btn:hover {
+            background: #ddd;
+        }
+
+        /*  Info modals (About / Help)  */
+        .info-card {
+            background: white;
+            border-radius: 12px;
+            padding: 26px;
+            width: 400px;
+            max-width: 90vw;
+            box-shadow: 0 10px 30px 0 rgba(0, 0, 0, 0.06);
+        }
+
+        .info-card h2 {
+            font-size: 1.15rem;
+            margin-bottom: 4px;
+        }
+
+        .info-card .info-sub {
+            font-size: 0.82rem;
+            color: #888;
+            margin-bottom: 18px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 9px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 0.88rem;
+        }
+
+        .info-row:last-of-type {
+            border-bottom: none;
+        }
+
+        .info-row span:first-child {
+            color: #777;
+        }
+
+        .info-row span:last-child {
+            font-weight: 600;
+        }
+
+        .help-list {
+            font-size: 0.87rem;
+            line-height: 1.55;
+            color: #333;
+        }
+
+        .help-list li {
+            margin-bottom: 10px;
+            margin-left: 18px;
+        }
+
+        .info-close-btn {
+            margin-top: 18px;
+            width: 100%;
+            background: #16171d;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 10px;
+            font-weight: 700;
+            font-size: 0.88rem;
+            cursor: pointer;
+        }
+
+        .info-close-btn:hover {
+            background: #2b2c34;
+        }
+
+        /*  Recent / Settings views  */
+        .view {
+            display: none;
+        }
+
+        .view.active {
+            display: block;
+        }
+
+        .recent-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .recent-item:last-child {
+            border-bottom: none;
+        }
+
+        .recent-time {
+            font-size: 0.78rem;
+            color: #999;
+            margin-left: auto;
+            margin-right: 14px;
+            white-space: nowrap;
+        }
+
+        .settings-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 4px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .settings-row:last-child {
+            border-bottom: none;
+        }
+
+        .settings-row .settings-label {
+            font-weight: 600;
+            font-size: 0.92rem;
+        }
+
+        .settings-row .settings-desc {
+            font-size: 0.8rem;
+            color: #777;
+            margin-top: 2px;
+        }
+
+        .btn-danger {
+            background: #fde8e8;
+            color: #d33;
+            border: none;
+            border-radius: 6px;
+            padding: 9px 16px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .btn-danger:hover {
+            background: #f9d0d0;
+        }
+
+        .btn-secondary {
+            background: #eee;
+            color: #333;
+            border: none;
+            border-radius: 6px;
+            padding: 9px 16px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .btn-secondary:hover {
+            background: #ddd;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar">
+        <div class="brand">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path d="M2 6l10-4 10 4-10 4-10-4z" fill="#ff4040" />
+                <path d="M2 12l10 4 10-4M2 18l10 4 10-4" stroke="#ff4040" stroke-width="1.6" fill="none" />
+            </svg>
+            Workshop
+        </div>
+        <div class="nav-item active" data-tab="workspaces">Workspaces</div>
+        <div class="nav-item" data-tab="recent">Recent</div>
+        <div class="nav-item" data-tab="settings">Settings</div>
+        <div class="sidebar-bottom">
+            <div class="nav-item" id="add-workspace-nav">+ Add Workspace</div>
+            <div class="nav-item" id="about-nav">About</div>
+        </div>
+    </div>
+
+    <div class="main">
+        <!-- Workspaces view -->
+        <div class="view active" id="view-workspaces">
+            <div class="page-header">
+                <div>
+                    <h1>Select a Databricks Workspace</h1>
+                    <p>Connect to your Databricks workspace to get started.</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="toolbar">
+                    <div class="search-wrap">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="11" cy="11" r="7" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                        <input type="text" id="search-input" placeholder="Search workspaces...">
+                    </div>
+                    <button class="btn-primary" id="open-add-btn">Add Workspace +</button>
+                </div>
+
+                <div id="workspace-list"></div>
+                <div id="empty-state" class="empty-state" style="display:none;">No workspaces yet. Add one to get
+                    started.</div>
+
+                <div class="footer-note">
+                    <span>Your connections are secure and encrypted</span>
+                    <span>Need help? <a href="#" id="help-link">View Documentation</a></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent view -->
+        <div class="view" id="view-recent">
+            <div class="page-header">
+                <div>
+                    <h1>Recent Workspaces</h1>
+                    <p>Workspaces you've connected to recently show up here.</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div id="recent-list"></div>
+                <div id="recent-empty" class="empty-state" style="display:none;">No recent connections yet. Connect to a
+                    workspace to see it here.</div>
+            </div>
+        </div>
+
+        <!-- Settings view -->
+        <div class="view" id="view-settings">
+            <div class="page-header">
+                <div>
+                    <h1>Settings</h1>
+                    <p>Manage app preferences and data.</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="settings-row">
+                    <div>
+                        <div class="settings-label">Saved workspaces</div>
+                        <div class="settings-desc" id="settings-count">0 workspaces saved</div>
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div>
+                        <div class="settings-label">Clear recent history</div>
+                        <div class="settings-desc">Removes the "Recent" connection list. Doesn't delete workspaces.
+                        </div>
+                    </div>
+                    <button class="btn-secondary" id="clear-recent-btn">Clear History</button>
+                </div>
+                <div class="settings-row">
+                    <div>
+                        <div class="settings-label">Delete all workspaces</div>
+                        <div class="settings-desc">Permanently removes every saved workspace.</div>
+                    </div>
+                    <button class="btn-danger" id="delete-all-btn">Delete All</button>
+                </div>
+                <div class="settings-row">
+                    <div>
+                        <div class="settings-label">About this app</div>
+                        <div class="settings-desc">Version, license and app info.</div>
+                    </div>
+                    <button class="btn-secondary" id="settings-about-btn">View</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- About modal -->
+    <div class="overlay" id="about-overlay">
+        <div class="info-card">
+            <h2>Databricks Workspace Selector</h2>
+            <div class="info-sub">Desktop workspace launcher</div>
+            <div class="info-row"><span>Application Name</span><span>Databricks Workspace Selector</span></div>
+            <div class="info-row"><span>Version</span><span>1.0.0</span></div>
+            <div class="info-row"><span>License</span><span>Apache-2.0</span></div>
+            <button class="info-close-btn" id="about-close-btn">Close</button>
+        </div>
+    </div>
+
+    <!-- Help modal -->
+    <div class="overlay" id="help-overlay">
+        <div class="info-card">
+            <h2>How can I get started?</h2>
+            <div class="info-sub">Quick guide to the workspace selector</div>
+            <ul class="help-list">
+                <li><strong>Add a workspace</strong> Click "Add Workspace" and enter a name and your Databricks URL
+                    (e.g. https://abc-123.cloud.databricks.com).</li>
+                <li><strong>Connect</strong> Click "Connect" on any workspace card, or click its name, to launch that
+                    workspace.</li>
+                <li><strong>Search</strong> Use the search bar to filter workspaces by name or URL.</li>
+                <li><strong>Edit or delete</strong> Click the ⋮ menu on a workspace card to edit its details or remove
+                    it.</li>
+                <li><strong>Recent</strong> The Recent tab shows the workspaces you've connected to most recently.</li>
+                <li><strong>Settings</strong> Clear your recent history or delete all saved workspaces from the
+                    Settings tab.</li>
+            </ul>
+            <button class="info-close-btn" id="help-close-btn">Close</button>
+        </div>
+    </div>
+
+    <!-- Add/Edit modal -->
+    <div class="overlay" id="form-overlay">
+        <div class="form-card">
+            <h2 id="form-title">Add a New Workspace</h2>
+            <form id="workspace-form">
+                <input type="hidden" id="workspace-id">
+                <div class="form-group">
+                    <label for="name">Workspace Name</label>
+                    <input type="text" id="name" placeholder="e.g., Production Analytics" required>
+                </div>
+                <div class="form-group">
+                    <label for="url">Databricks URL</label>
+                    <input type="url" id="url" placeholder="https://abc-123.cloud.databricks.com" required>
+                </div>
+                <div class="btn-container">
+                    <button type="submit" id="submit-btn">Launch & Save Workspace</button>
+                    <button type="button" id="cancel-btn" class="cancel-btn">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        const workspaceList = document.getElementById('workspace-list');
+        const emptyState = document.getElementById('empty-state');
+        const formOverlay = document.getElementById('form-overlay');
+        const formTitle = document.getElementById('form-title');
+        const form = document.getElementById('workspace-form');
+        const workspaceIdInput = document.getElementById('workspace-id');
+        const nameInput = document.getElementById('name');
+        const urlInput = document.getElementById('url');
+        const submitBtn = document.getElementById('submit-btn');
+        const cancelBtn = document.getElementById('cancel-btn');
+        const searchInput = document.getElementById('search-input');
+        const openAddBtn = document.getElementById('open-add-btn');
+        const addWorkspaceNav = document.getElementById('add-workspace-nav');
+
+        const navItems = document.querySelectorAll('.nav-item[data-tab]');
+        const views = document.querySelectorAll('.view');
+        const recentList = document.getElementById('recent-list');
+        const recentEmpty = document.getElementById('recent-empty');
+        const settingsCount = document.getElementById('settings-count');
+        const clearRecentBtn = document.getElementById('clear-recent-btn');
+        const deleteAllBtn = document.getElementById('delete-all-btn');
+        const settingsAboutBtn = document.getElementById('settings-about-btn');
+
+        const aboutNav = document.getElementById('about-nav');
+        const aboutOverlay = document.getElementById('about-overlay');
+        const aboutCloseBtn = document.getElementById('about-close-btn');
+        const helpLink = document.getElementById('help-link');
+        const helpOverlay = document.getElementById('help-overlay');
+        const helpCloseBtn = document.getElementById('help-close-btn');
+
+        let isEditing = false;
+        let allWorkspaces = [];
+
+        const RECENT_KEY = 'recentWorkspaceIds';
+
+        function getRecentIds() {
+            try {
+                return JSON.parse(localStorage.getItem(RECENT_KEY)) || [];
+            } catch {
+                return [];
+            }
+        }
+
+        function recordRecent(id) {
+            let ids = getRecentIds().filter(entry => entry.id !== id);
+            ids.unshift({ id, time: Date.now() });
+            ids = ids.slice(0, 10);
+            localStorage.setItem(RECENT_KEY, JSON.stringify(ids));
+        }
+
+        function formatTime(ts) {
+            const diffMs = Date.now() - ts;
+            const mins = Math.floor(diffMs / 60000);
+            if (mins < 1) return 'Just now';
+            if (mins < 60) return `${mins}m ago`;
+            const hours = Math.floor(mins / 60);
+            if (hours < 24) return `${hours}h ago`;
+            const days = Math.floor(hours / 24);
+            return `${days}d ago`;
+        }
+
+        function renderRecent() {
+            const ids = getRecentIds();
+            const entries = ids
+                .map(entry => ({ ws: allWorkspaces.find(w => w.id === entry.id), time: entry.time }))
+                .filter(e => e.ws);
+
+            recentList.innerHTML = '';
+
+            if (entries.length === 0) {
+                recentEmpty.style.display = 'block';
+                return;
+            }
+            recentEmpty.style.display = 'none';
+
+            entries.forEach(({ ws, time }) => {
+                const item = document.createElement('div');
+                item.className = 'recent-item';
+
+                const icon = document.createElement('div');
+                icon.className = 'ws-icon';
+                icon.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="3" width="16" height="18" rx="1"/><line x1="8" y1="7" x2="8" y2="7.01"/><line x1="12" y1="7" x2="12" y2="7.01"/><line x1="16" y1="7" x2="16" y2="7.01"/></svg>`;
+
+                const info = document.createElement('div');
+                info.className = 'workspace-info';
+                info.innerHTML = `<div class="ws-name">${ws.name}</div><div class="ws-url">${ws.url}</div>`;
+                info.style.cursor = 'default';
+
+                const time_el = document.createElement('div');
+                time_el.className = 'recent-time';
+                time_el.textContent = formatTime(time);
+
+                const connectBtn = document.createElement('button');
+                connectBtn.className = 'connect-btn';
+                connectBtn.textContent = 'Connect';
+                connectBtn.addEventListener('click', () => {
+                    recordRecent(ws.id);
+                    ipcRenderer.send('select-workspace', ws.id);
+                });
+
+                item.appendChild(icon);
+                item.appendChild(info);
+                item.appendChild(time_el);
+                item.appendChild(connectBtn);
+                recentList.appendChild(item);
+            });
+        }
+
+        function renderSettings() {
+            const count = allWorkspaces.length;
+            settingsCount.textContent = `${count} workspace${count === 1 ? '' : 's'} saved`;
+        }
+
+        function switchTab(tab) {
+            navItems.forEach(item => item.classList.toggle('active', item.dataset.tab === tab));
+            views.forEach(view => view.classList.toggle('active', view.id === `view-${tab}`));
+            if (tab === 'recent') renderRecent();
+            if (tab === 'settings') renderSettings();
+        }
+
+        navItems.forEach(item => {
+            item.addEventListener('click', () => switchTab(item.dataset.tab));
+        });
+
+        clearRecentBtn.addEventListener('click', () => {
+            localStorage.removeItem(RECENT_KEY);
+            renderRecent();
+        });
+
+        deleteAllBtn.addEventListener('click', () => {
+            if (allWorkspaces.length === 0) return;
+            if (confirm('Delete all saved workspaces? This cannot be undone.')) {
+                allWorkspaces.forEach(ws => ipcRenderer.send('delete-workspace', ws.id));
+            }
+        });
+
+        settingsAboutBtn.addEventListener('click', () => aboutOverlay.classList.add('open'));
+        aboutNav.addEventListener('click', () => aboutOverlay.classList.add('open'));
+        aboutCloseBtn.addEventListener('click', () => aboutOverlay.classList.remove('open'));
+        aboutOverlay.addEventListener('click', (e) => {
+            if (e.target === aboutOverlay) aboutOverlay.classList.remove('open');
+        });
+
+        helpLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            helpOverlay.classList.add('open');
+        });
+        helpCloseBtn.addEventListener('click', () => helpOverlay.classList.remove('open'));
+        helpOverlay.addEventListener('click', (e) => {
+            if (e.target === helpOverlay) helpOverlay.classList.remove('open');
+        });
+
+        function openModal() {
+            formOverlay.classList.add('open');
+        }
+
+        function closeModal() {
+            formOverlay.classList.remove('open');
+            exitEditMode();
+        }
+
+        function renderWorkspaces(workspaces) {
+            allWorkspaces = workspaces || [];
+            const query = searchInput.value.trim().toLowerCase();
+            const filtered = allWorkspaces.filter(ws =>
+                ws.name.toLowerCase().includes(query) || ws.url.toLowerCase().includes(query)
+            );
+
+            workspaceList.innerHTML = '';
+
+            renderSettings();
+
+            if (allWorkspaces.length === 0) {
+                emptyState.style.display = 'block';
+                return;
+            }
+            emptyState.style.display = 'none';
+
+            filtered.forEach(ws => {
+                const item = document.createElement('div');
+                item.className = 'workspace-item';
+
+                const icon = document.createElement('div');
+                icon.className = 'ws-icon';
+                icon.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="3" width="16" height="18" rx="1"/><line x1="8" y1="7" x2="8" y2="7.01"/><line x1="12" y1="7" x2="12" y2="7.01"/><line x1="16" y1="7" x2="16" y2="7.01"/><line x1="8" y1="11" x2="8" y2="11.01"/><line x1="12" y1="11" x2="12" y2="11.01"/><line x1="16" y1="11" x2="16" y2="11.01"/></svg>`;
+
+                const info = document.createElement('div');
+                info.className = 'workspace-info';
+                info.innerHTML = `<div class="ws-name">${ws.name}</div><div class="ws-url">${ws.url}</div>`;
+
+                const connectBtn = document.createElement('button');
+                connectBtn.className = 'connect-btn';
+                connectBtn.textContent = 'Connect';
+                connectBtn.addEventListener('click', () => {
+                    recordRecent(ws.id);
+                    ipcRenderer.send('select-workspace', ws.id);
+                });
+
+                const menuWrap = document.createElement('div');
+                menuWrap.className = 'menu-wrap';
+                const menuBtn = document.createElement('button');
+                menuBtn.className = 'menu-btn';
+                menuBtn.textContent = '⋮';
+                const dropdown = document.createElement('div');
+                dropdown.className = 'dropdown';
+
+                const editOpt = document.createElement('button');
+                editOpt.textContent = 'Edit';
+                editOpt.addEventListener('click', () => {
+                    dropdown.classList.remove('open');
+                    enterEditMode(ws);
+                    openModal();
+                });
+
+                const deleteOpt = document.createElement('button');
+                deleteOpt.className = 'delete-opt';
+                deleteOpt.textContent = 'Delete';
+                deleteOpt.addEventListener('click', () => {
+                    dropdown.classList.remove('open');
+                    if (confirm(`Are you sure you want to delete "${ws.name}"?`)) {
+                        ipcRenderer.send('delete-workspace', ws.id);
+                    }
+                });
+
+                dropdown.appendChild(editOpt);
+                dropdown.appendChild(deleteOpt);
+
+                menuBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    document.querySelectorAll('.dropdown.open').forEach(d => {
+                        if (d !== dropdown) d.classList.remove('open');
+                    });
+                    dropdown.classList.toggle('open');
+                });
+
+                menuWrap.appendChild(menuBtn);
+                menuWrap.appendChild(dropdown);
+
+                item.appendChild(icon);
+                item.appendChild(info);
+                item.appendChild(connectBtn);
+                item.appendChild(menuWrap);
+                workspaceList.appendChild(item);
+            });
+        }
+
+        function enterEditMode(ws) {
+            isEditing = true;
+            workspaceIdInput.value = ws.id;
+            nameInput.value = ws.name;
+            urlInput.value = ws.url;
+
+            formTitle.textContent = "Edit Workspace";
+            submitBtn.textContent = "Save Changes";
+        }
+
+        function exitEditMode() {
+            isEditing = false;
+            workspaceIdInput.value = '';
+            form.reset();
+
+            formTitle.textContent = "Add a New Workspace";
+            submitBtn.textContent = "Launch & Save Workspace";
+        }
+
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.dropdown.open').forEach(d => d.classList.remove('open'));
+        });
+
+        searchInput.addEventListener('input', () => renderWorkspaces(allWorkspaces));
+
+        openAddBtn.addEventListener('click', () => { exitEditMode(); openModal(); });
+        addWorkspaceNav.addEventListener('click', () => { exitEditMode(); openModal(); });
+        cancelBtn.addEventListener('click', closeModal);
+        formOverlay.addEventListener('click', (e) => {
+            if (e.target === formOverlay) closeModal();
+        });
+
+        // Init
+        ipcRenderer.invoke('get-workspaces').then(renderWorkspaces);
+
+        ipcRenderer.on('workspaces-updated', (event, updatedWorkspaces) => {
+            renderWorkspaces(updatedWorkspaces);
+            closeModal();
+        });
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = nameInput.value;
+            const url = urlInput.value;
+            const id = workspaceIdInput.value;
+
+            if (isEditing && id) {
+                ipcRenderer.send('edit-workspace', { id, name, url });
+            } else {
+                ipcRenderer.send('save-initial-workspace', { name, url });
+            }
+        });
+    </script>
+</body>
+
+</html>
