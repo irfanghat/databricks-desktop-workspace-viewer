@@ -14,7 +14,7 @@ class WorkspaceManager {
         this.workspaces = store.get("workspaces", []);
         // ---------------------------------------------------------
         // Always reset active workspace on boot so we 
-        // land on the selector screen. Electron kept the previous 
+        // land on the selector screen. Electron keeps previous 
         // session active, which is not desired.
         // ---------------------------------------------------------
         this.activeWorkspace = null;
