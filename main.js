@@ -14,7 +14,7 @@ class WorkspaceManager {
         this.workspaces = store.get("workspaces", []);
         // ---------------------------------------------------------
         // Always reset active workspace on boot so we 
-        // land on the selector screen. Electron kept the previous 
+        // land on the selector screen. Electron keeps previous 
         // session active, which is not desired.
         // ---------------------------------------------------------
         this.activeWorkspace = null;
@@ -67,12 +67,51 @@ class WorkspaceManager {
 
 const workspaceManager = new WorkspaceManager();
 
+const { URL } = require("url");
+
+function isAllowedHost(hostname, allowedHosts) {
+    return allowedHosts.some(
+        (allowed) => hostname === allowed || hostname.endsWith(`.${allowed}`)
+    );
+}
+
+function getAllowedHosts(workspace) {
+    const workspaceHost = new URL(workspace.url).hostname;
+
+    return [
+        workspaceHost,
+        "databricks.com",
+        "azuredatabricks.net",
+        "gcp.databricks.com",
+        "cloud.databricks.com",
+        // Common SSO/IdP providers
+        "login.microsoftonline.com",
+        "accounts.google.com",
+        "okta.com",
+        "oktapreview.com",
+        "pingone.com",
+        "auth0.com",
+    ];
+}
+
+function isHttpUrl(urlString) {
+    try {
+        const { protocol } = new URL(urlString);
+        return protocol === "https:" || protocol === "http:";
+    } catch {
+        return false;
+    }
+}
+
 /**
- * Creates the primary app window running Databricks.
+ * Creates the primary app window.
  */
 function createWindow() {
     const workspace = workspaceManager.current();
     if (!workspace) return;
+
+    const allowedHosts = getAllowedHosts(workspace);
+    const partition = `persist:${workspace.id}`;
 
     mainWindow = new BrowserWindow({
         width: 1400,
@@ -82,35 +121,120 @@ function createWindow() {
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
-            partition: `persist:${workspace.id}`,
+            sandbox: true,
+            webSecurity: true,
+            partition,
         },
     });
 
     mainWindow.loadURL(workspace.url);
+    attachNavigationGuards(mainWindow, allowedHosts, partition);
+    setupDeviceAuthHandlers(session.fromPartition(partition), allowedHosts);
 
-    mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-        const isWorkspace = url.includes("databricks.com") || url.includes("login");
-        if (!isWorkspace) {
-            shell.openExternal(url);
-            return { action: "deny" };
-        }
-        return { action: "allow" };
-    });
-
-    // --------------------------------------------------- 
-    // Open selector back up after the main window is closed, 
-    // so the user can select a different workspace.
-    // ---------------------------------------------------
     mainWindow.on("closed", () => {
         mainWindow = null;
-        workspaceManager.setActive(null); // Reset state
+        workspaceManager.setActive(null);
+        if (!setupWindow) createSetupWindow();
+    });
+}
 
-        // --------------------------------------------
-        // Bring the workspace selector back up
-        // --------------------------------------------
-        if (!setupWindow) {
-            createSetupWindow();
+/**
+ * Handle MFA/SSO popups.
+ */
+function attachNavigationGuards(win, allowedHosts, partition) {
+    const wc = win.webContents;
+
+    wc.setWindowOpenHandler(({ url }) => {
+        let hostname;
+        try {
+            hostname = new URL(url).hostname;
+        } catch {
+            return { action: "deny" };
         }
+
+        if (!isAllowedHost(hostname, allowedHosts)) {
+            handleExternal(url);
+            return { action: "deny" };
+        }
+
+        // --------------------------------------------------
+        // SSO popups are allowed to open, but we want to 
+        // control their size and features.
+        // --------------------------------------------------
+        return {
+            action: "allow",
+            overrideBrowserWindowOptions: {
+                width: 500,
+                height: 700,
+                autoHideMenuBar: true,
+                webPreferences: {
+                    nodeIntegration: false,
+                    contextIsolation: true,
+                    sandbox: true,
+                    webSecurity: true,
+                    partition,
+                },
+            },
+        };
+    });
+
+    wc.on("will-navigate", (event, url) => {
+        let hostname;
+        try {
+            hostname = new URL(url).hostname;
+        } catch {
+            event.preventDefault();
+            return;
+        }
+        if (!isAllowedHost(hostname, allowedHosts)) {
+            event.preventDefault();
+            handleExternal(url);
+        }
+    });
+
+    wc.on("will-attach-webview", (event) => event.preventDefault());
+
+    wc.on("did-create-window", (childWindow) => {
+        attachNavigationGuards(childWindow, allowedHosts, partition);
+    });
+}
+
+/**
+ * WebAuthn security keys (USB HID) and Bluetooth MFA require explicit 
+ * device permissions.
+ */
+function setupDeviceAuthHandlers(ses, allowedHosts) {
+    const originAllowed = (details) => {
+        try {
+            return isAllowedHost(new URL(details.securityOrigin ?? details.requestingUrl).hostname, allowedHosts);
+        } catch {
+            return false;
+        }
+    };
+
+    ses.setPermissionRequestHandler((webContents, permission, callback, details) => {
+        if (["hid", "usb", "bluetooth", "serial"].includes(permission) && originAllowed(details)) {
+            return callback(true);
+        }
+        callback(false);
+    });
+
+    ses.setDevicePermissionHandler((details) => {
+        return ["hid", "usb", "bluetooth"].includes(details.deviceType) && originAllowed(details);
+    });
+
+    // --------------------------------------------------------------------
+    // Auto-select if exactly one matching device shows up, for a
+    // single plugged-in security key, otherwise let the user pick.
+    // --------------------------------------------------------------------
+    ses.on("select-hid-device", (event, details, callback) => {
+        event.preventDefault();
+        callback(details.deviceList.length === 1 ? details.deviceList[0].deviceId : undefined);
+    });
+
+    ses.on("select-bluetooth-device", (event, deviceList, callback) => {
+        event.preventDefault();
+        callback(deviceList.length === 1 ? deviceList[0].deviceId : "");
     });
 }
 
